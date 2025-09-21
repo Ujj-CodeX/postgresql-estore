@@ -1,59 +1,25 @@
-create table Customers (
-   cust_id serial primary key,
-   cust_name varchar(100) not null
-   
-);
-
-create table orders (
-
-ord_id serial primary key,
-ord_date date not null,
-cust_id int not null,
-foreign key (cust_id) references Customers(cust_id)
-
+create procedure update_customer_name (
+c_id int, new_name varchar(100)
+)
+language plpgsql
+AS $$
+begin
+update Customers
+SET cust_name = new_name
+where cust_id = c_id;
+end;
+$$
 
 
-);
-
-create table products (
-p_id serial primary key,
-p_name varchar(100),
-price numeric not null
-);
+call update_customer_name (1,'ujjawal')
 
 
-create table order_items(
-items_id serial primary key,
-ord_id int,
-p_id int,
-quantity int,
-foreign key (p_id ) references products(p_id),
-foreign key (ord_id) references orders(ord_id)
-);
 
-
-INSERT INTO customers (cust_name)
-VALUES
-    ('Raju'), ('Sham'), ('Paul'), ('Alex');
-INSERT INTO order_items (ord_id, p_id, quantity)
-VALUES
-    (1, 1, 1),  
-    (1, 4, 2), 
-    (2, 1, 1), 
-    (3, 2, 1),  
-    (3, 4, 5), 
-    (4, 3, 1);  
-
-	INSERT INTO products (p_name, price)
-VALUES
-    ('Laptop', 55000.00),
-    ('Mouse', 500),
-    ('Keyboard', 800.00),
-    ('Cable', 250.00)
-;
-
-Overall report 
-
+Create function final_report (c_id int)
+returns table (cust_name varchar , ord_date date , p_name varchar , price numeric ,  quantity int , total_price numeric)
+AS $$
+begin 
+return query
 SELECT 
 	c.cust_name,
 	o.ord_date,
@@ -62,15 +28,44 @@ SELECT
 	oi.quantity,
 	(oi.quantity*p.price) AS total_price
 FROM order_items oi
+
 	JOIN
 		products p ON oi.p_id=p.p_id
 	JOIN
 		orders o ON o.ord_id=oi.ord_id
 	JOIN
-		customers c ON o.cust_id=c.cust_id;
+		customers c ON o.cust_id=c.cust_id
+		where c.cust_id = c_id;
+
+
+end ;
+
+$$ language plpgsql;
 
 
 
+create function checkprice()
+returns trigger
+LANGUAGE plpgsql
+as $$
+
+begin 
+if new.price<0 then
+new.price=0;
+end if ;
+
+return New;
+end;
+$$;
+
+CREATE TRIGGER trg_check_price
+BEFORE INSERT OR UPDATE ON products
+FOR EACH ROW
+EXECUTE FUNCTION checkprice();
 
 
-
+INSERT INTO products (p_name, price)
+VALUES
+    ('Headphone', -120)
+    
+;
